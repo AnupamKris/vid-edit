@@ -2,16 +2,26 @@
   <main>
     <div class="mainbar">
       <div class="sidebar">
-        <input type="file" ref="inputRef" @change="handleFileChange" tabindex="-1" :disabled="videoSelected" />
+        <input
+          type="file"
+          ref="inputRef"
+          @change="handleFileChange"
+          tabindex="-1"
+          :disabled="videoSelected"
+        />
         <button @click="openFile">Open</button>
         <div class="marker-times">
-          <div @click.self="selectMarker(index)" class="mark" v-for="marker, index in markers"
-            :class="{ selected: selectedMarker === index }">
-            <p> {{ index }} </p>
+          <div
+            @click.self="selectMarker(index)"
+            class="mark"
+            v-for="(marker, index) in markers"
+            :class="{ selected: selectedMarker === index }"
+          >
+            <p>{{ index }}</p>
             <button @click="updateMarker(index, 0.01)">
               <ion-icon name="remove-circle-outline"></ion-icon>
             </button>
-            <input type="text" v-model="markers[index]">
+            <input type="text" v-model="markers[index]" />
             <button @click="updateMarker(index, 0.01)">
               <ion-icon name="add-circle-outline"></ion-icon>
             </button>
@@ -23,33 +33,63 @@
         <button @click="clipVideo" :disabled="!videoSelected">Clip</button>
       </div>
       <div class="viddiv">
-        <video @click="togglePause" src="" ref="video" @timeupdate="updateTime"></video>
+        <video
+          @click="togglePause"
+          src=""
+          ref="video"
+          @timeupdate="updateTime"
+        ></video>
       </div>
     </div>
     <div class="controls" v-if="video">
       <div class="inactive" :class="{ cover: !videoSelected }"></div>
       <div class="wrapper">
         <div class="seek-slider">
-          <input ref="sliderRef" :value="seek" @input="changeSeek" type="range" :min="0" :max="100" :step="0.01" />
+          <input
+            ref="sliderRef"
+            :value="seek"
+            @input="changeSeek"
+            type="range"
+            :min="0"
+            :max="100"
+            :step="0.01"
+          />
         </div>
-        <div class="markers-wrapper">
-          <div class="marker" :style="{ left: marker / video.duration * 100 + '%' }" v-for="marker, index in markers"
-            @click="selectMarker(index)" :class="{ selected: selectedMarker == index }">
-            <ion-icon name="pricetag" style="fill:white"></ion-icon>
+        <div
+          class="markers-wrapper"
+          @mousemove="dragMarker"
+          @mouseup="draggingMarker = null"
+        >
+          <div
+            class="marker"
+            :style="{ left: (marker / video.duration) * 100 + '%' }"
+            v-for="(marker, index) in markers"
+            @click="selectMarker(index)"
+            :class="{ selected: selectedMarker == index }"
+            @mousedown="draggingMarker = index"
+            @mouseup="draggingMarker = null"
+          >
+            <ion-icon name="pricetag" style="fill: white"></ion-icon>
           </div>
-          <div class="section"
-            :style="{ left: (piece.start / video.duration * 100) + '%', width: piece.end / video.duration * 100 + '%' }"
-            v-for="piece in pieces"></div>
+          <div
+            class="section"
+            :style="{
+              left: (piece.start / video.duration) * 100 + '%',
+              width: (piece.end / video.duration) * 100 + '%',
+            }"
+            v-for="piece in pieces"
+          ></div>
         </div>
-
       </div>
 
       <div class="ctrls">
-        <p>{{ padInt(video.currentTime / 60) }}:{{
-          padInt(video.currentTime % 60)
-        }}
+        <p>
+          {{ padInt(video.currentTime / 60) }}:{{
+            padInt(video.currentTime % 60)
+          }}
           /
-          {{ padInt(video.duration / 60) }}:{{ padInt(video.duration % 60) }}</p>
+          {{ padInt(video.duration / 60) }}:{{ padInt(video.duration % 60) }}
+        </p>
 
         <div class="buttons">
           <div class="ctl" @click="skipBack">
@@ -68,7 +108,6 @@
           <div class="ctl" @click="skipEnd">
             <ion-icon name="play-skip-forward-circle-outline"></ion-icon>
           </div>
-
         </div>
 
         <div class="buttons">
@@ -82,18 +121,21 @@
       </div>
     </div>
   </main>
-  <div class="loadiv" v-if="loading">
-    loading...
-  </div>
+  <div class="loadiv" v-if="loading">loading...</div>
 </template>
 
 <script setup>
-import { readDir, removeFile } from "@tauri-apps/api/fs";
-import { Command, } from "@tauri-apps/api/shell";
-import { open, save } from '@tauri-apps/api/dialog'
-import { convertFileSrc } from '@tauri-apps/api/tauri'
+import {
+  readDir,
+  removeFile,
+  writeTextFile,
+  BaseDirectory,
+} from "@tauri-apps/api/fs";
+import { Command } from "@tauri-apps/api/shell";
+import { open, save } from "@tauri-apps/api/dialog";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
-const sliderRef = ref(null)
+const sliderRef = ref(null);
 const filepath = ref("");
 const video = ref(null);
 const seek = ref(0);
@@ -102,9 +144,10 @@ const videoSelected = ref(false);
 const selectedMarker = ref(null);
 const padInt = (num) => parseInt(num).toString().padStart(2, 0);
 const inputRef = ref(null);
-const markers = ref([])
+const markers = ref([]);
 const loading = ref(false);
-const isPaused = ref(false)
+const isPaused = ref(false);
+const draggingMarker = ref(null);
 const pieces = computed(() => {
   let start = 0;
   let end = 0;
@@ -131,9 +174,9 @@ const updateTime = () => {
 };
 
 const addMarker = () => {
-  markers.value.push(video.value.currentTime)
+  markers.value.push(video.value.currentTime);
   markers.value.sort((a, b) => a - b);
-}
+};
 
 const handleFileChange = (e) => {
   console.log(e.target.files[0]);
@@ -171,18 +214,17 @@ const changeVolume = () => {
 };
 
 const skipBack = () => {
-  video.value.currentTime = 0
-}
+  video.value.currentTime = 0;
+};
 const skipEnd = () => {
-  video.value.currentTime = video.value.duration
-}
+  video.value.currentTime = video.value.duration;
+};
 const playForward = () => {
-  video.value.currentTime += 1
-}
+  video.value.currentTime += 1;
+};
 const playBackward = () => {
-  video.value.currentTime -= 1
-}
-
+  video.value.currentTime -= 1;
+};
 
 const changeSeek = (e) => {
   if (typeof e === "number") {
@@ -196,7 +238,7 @@ const changeSeek = (e) => {
 const updateMarker = (index, val) => {
   markers.value[index] += val;
   video.value.currentTime = markers.value[index];
-}
+};
 
 const seekToPosition = (e) => {
   console.log(e);
@@ -228,18 +270,22 @@ const openFile = async () => {
     video.value.volume = volume.value / 100;
     videoSelected.value = true;
   }
-
 };
 
 const clipVideo = async () => {
   let piecess = pieces.value;
   let file = filepath.value;
   let outputPath = await save({
-    filters: [{
-      name: 'Video',
-      extensions: ['mp4']
-    }]
+    filters: [
+      {
+        name: "Video",
+        extensions: ["mp4"],
+      },
+    ],
   });
+  if (!outputPath) {
+    return;
+  }
   console.log(pieces.value.length);
   let progress = 0;
   let total = pieces.value.length;
@@ -248,10 +294,15 @@ const clipVideo = async () => {
     let start = piece.start;
     let end = piece.end;
     let output = filepath.value.replace(".mp4", `_${i}.mp4`);
-    let exec = false
+    let exec = false;
     console.log(output);
     // console.log("-i", filepath.value.replaceAll("\\", "/"), "-ss", start.toString(), "-t", end.toString(), "-c", "copy", output.replaceAll("\\", "/"));
-    let command = Command.sidecar("trim", [filepath.value.replaceAll("\\", "/"), start.toString(), end.toString(), output.replaceAll("\\", "/")]);
+    let command = Command.sidecar("trim", [
+      filepath.value.replaceAll("\\", "/"),
+      start.toString(),
+      end.toString(),
+      output.replaceAll("\\", "/"),
+    ]);
     loading.value = true;
     command.on("error", (err) => {
       console.log("Error", err);
@@ -265,15 +316,19 @@ const clipVideo = async () => {
     });
     await command.execute();
   }
-
-
-  let files = pieces.value.map((piece, i) => {
-    return filepath.value.replace(".mp4", `_${i}.mp4`).replaceAll("\\", "/");
+  let vidlist = pieces.value.map((piece, i) => {
+    return (
+      "file '" +
+      filepath.value.replace(".mp4", `_${i}.mp4`).replaceAll("\\", "/") +
+      "'"
+    );
   });
+  let txtLoc = filepath.value.replace(".mp4", "_list.txt");
+  await writeTextFile(txtLoc, vidlist.join("\n"));
 
-  console.log([outputPath, ...files]);
+  console.log([outputPath, txtLoc]);
 
-  let command = Command.sidecar("concat", [outputPath, ...files]);
+  let command = Command.sidecar("concat", [outputPath, txtLoc]);
   loading.value = true;
   command.on("error", (err) => {
     console.log("Error", err);
@@ -283,18 +338,28 @@ const clipVideo = async () => {
   });
   command.on("close", (code) => {
     console.log("Closed", code);
-    // files.forEach(async (file) => {
-    //   removeFile(file);
-    // });
-    loading.value = false;
   });
   await command.execute();
-
+  let files = pieces.value.map((piece, i) => {
+    return filepath.value.replace(".mp4", `_${i}.mp4`);
+  });
+  files.forEach(async (file) => {
+    removeFile(file);
+  });
+  removeFile(txtLoc);
+  loading.value = false;
   console.log("Clipped");
 
   // delete files
+};
 
-
+const dragMarker = (e) => {
+  if (draggingMarker.value !== null) {
+    console.log("dragging", e);
+    let movement = e.movementX;
+    markers.value[draggingMarker.value] +=
+      (movement / 100) * video.value.duration;
+  }
 };
 
 // move marker on arrow keys
@@ -327,21 +392,21 @@ const deleteMarker = (index) => {
 
 const handleMove = (e) => {
   console.log("hnadline", e.key);
-  if (e.key === 'M' || e.key === 'm') {
+  if (e.key === "M" || e.key === "m") {
     addMarker();
-  } else if (e.key === ' ') {
+  } else if (e.key === " ") {
     togglePause();
   } else if (selectedMarker.value !== null) {
     if (e.key === "Delete") {
       markers.value.splice(selectedMarker.value, 1);
       selectedMarker.value = null;
-      return
+      return;
     }
     moveMarker(e);
   } else {
     moveVideo(e);
   }
-}
+};
 
 window.addEventListener("keydown", handleMove);
 
@@ -376,7 +441,6 @@ main {
   width: 100%;
   background: #141414;
   overflow: hidden;
-
 
   .mainbar {
     display: flex;
@@ -450,7 +514,6 @@ main {
             justify-content: center;
             align-items: center;
             margin: 0;
-
           }
 
           .red {
@@ -464,7 +527,6 @@ main {
           background: #0088ff;
         }
       }
-
 
       button {
         width: 80%;
@@ -486,6 +548,11 @@ main {
     .viddiv {
       width: calc(100% - 300px);
       min-width: calc(100% - 300px);
+      height: 100%;
+      border-radius: 10px;
+      margin-left: 10px;
+      overflow: hidden;
+      background: #292929;
 
       video {
         width: 100%;
@@ -585,10 +652,7 @@ main {
       }
     }
   }
-
 }
-
-
 
 .wrapper {
   margin-top: 50px;
@@ -609,8 +673,8 @@ main {
 
   .marker {
     position: absolute;
-    // top: -10px;  
-    // left: 50%; 
+    // top: -10px;
+    // left: 50%;
 
     top: 7px;
     width: 5px;
@@ -649,14 +713,12 @@ main {
 }
 
 .seek-slider {
-
   width: 100%;
   height: 20px;
   border-radius: 5px;
   overflow: hidden;
 
   position: relative;
-
 
   // .seek {
   //   position: absolute;

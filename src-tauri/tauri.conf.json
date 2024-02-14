@@ -16,7 +16,11 @@
       "fs": {
         "readDir": true,
         "removeFile": true,
-        "scope": ["**","*"]
+        "writeFile": true,
+        "scope": [
+          "**",
+          "*"
+        ]
       },
       "dialog": {
         "all": false,
@@ -29,7 +33,9 @@
       "protocol": {
         "all": false,
         "asset": true,
-        "assetScope": ["**"]
+        "assetScope": [
+          "**"
+        ]
       },
       "shell": {
         "sidecar": true,
@@ -71,7 +77,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "com.anupamkris.dev",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
